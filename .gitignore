@@ -1,0 +1,39 @@
+# Laravel
+/vendor/
+/node_modules/
+/public/hot
+/public/storage
+/storage/*.key
+/storage/*.php
+.env
+.env.backup
+.phpunit.result.cache
+Homestead.yaml
+Homestead.json
+/.fleet
+/.idea
+/.vscode
+
+# Frontend
+/frontend/node_modules/
+/frontend/.pnp
+/frontend.pnp.js
+/frontend/coverage/
+/frontend/build/
+/frontend/.DS_Store
+/frontend/.env.local
+/frontend/.env.development.local
+/frontend/.env.test.local
+/frontend/.env.production.local
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
