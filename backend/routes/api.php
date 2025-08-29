@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\StreamController;
 // GET /api/series? ... same
 Route::get('/movies', fn(\Illuminate\Http\Request $r, CatalogController $c) => $c->list($r, app('App\Services\TmdbService'), 'movie'));
 Route::get('/series', fn(\Illuminate\Http\Request $r, CatalogController $c) => $c->list($r, app('App\Services\TmdbService'), 'series'));
+// Mixed recommended (movies + series)
+Route::get('/recommended', [CatalogController::class, 'recommended']);
 
 // Details
 Route::get('/movie/{id}', [DetailController::class, 'showMovie']);
@@ -18,3 +20,7 @@ Route::get('/series/{id}', [DetailController::class, 'showSeries']);
 // DEV stream URL (placeholder)
 Route::get('/movie/{id}/stream',  [StreamController::class, 'streamMovie']);
 Route::get('/series/{id}/stream', [StreamController::class, 'streamSeries']);
+
+Route::get('/stream/{video_id}', [StreamController::class, 'getStream']);
+
+Route::get('/sources/{type}/{id}', [StreamController::class, 'listServers']);

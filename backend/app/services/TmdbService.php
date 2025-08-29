@@ -46,6 +46,12 @@ class TmdbService
         return Cache::remember("tmdb:popular:$type:$page", 600, fn() => $this->get($path, ['page' => $page]));
     }
 
+    public function topRated(string $type = 'movie', int $page = 1)
+    {
+        $path = $type === 'movie' ? '/movie/top_rated' : '/tv/top_rated';
+        return Cache::remember("tmdb:top_rated:$type:$page", 600, fn() => $this->get($path, ['page' => $page]));
+    }
+
     public function search(string $query, string $type = 'movie', int $page = 1)
     {
         $path = $type === 'movie' ? '/search/movie' : '/search/tv';
@@ -118,6 +124,14 @@ class TmdbService
             'backdrop' => $backdrop,
             'runtime'  => $raw['runtime'] ?? null,             // movies
             'seasons'  => $raw['number_of_seasons'] ?? null,    // tv
+            'episodes' => $raw['number_of_episodes'] ?? null,   // tv
+            'seasonEpisodes' => array_values(array_map(function ($s) {
+                return [
+                    'season'   => $s['season_number'] ?? null,
+                    'episodes' => $s['episode_count'] ?? null,
+                    'name'     => $s['name'] ?? null,
+                ];
+            }, $raw['seasons'] ?? [])),
             'trailer'  => $yt,                                  // YouTube link (for info)
         ];
     }

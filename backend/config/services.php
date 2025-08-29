@@ -37,4 +37,15 @@ return [
         'image_base' => env('TMDB_IMAGE_BASE', 'https://image.tmdb.org/t/p'),
     ],
 
+    'smashy' => [
+        'base_url' => env('SMASHY_BASE_URL'),
+        'api_key'  => env('SMASHY_API_KEY'),
+        'timeout'  => env('SMASHY_TIMEOUT', 15),
+    ],
+
+    'providers' => [
+        'api_url' => env('PROVIDERS_API_URL', 'http://localhost:3001'),
+        'timeout' => env('PROVIDERS_TIMEOUT', 30),
+    ],
+
 ];
