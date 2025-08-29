@@ -5,13 +5,16 @@ import SearchBar from '../ui/SearchBar';
 export default function Navbar({ dark, setDark, query, setQuery, onSearch }) {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-3">
-      <a href="#" className="flex items-center gap-2 font-bold tracking-tight text-xl">
-        <Film className="h-6 w-6" /> StreamTox
+      <a href="/" className="group flex items-center gap-2 md:gap-3 font-semibold tracking-tight text-xl md:text-2xl">
+        <span className="flex items-baseline gap-1">
+          <span className="font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-2xl">CIMBA</span>
+          <span className="font-light text-zinc-900 dark:text-zinc-100">watch</span>
+        </span>
       </a>
       <nav className="hidden md:flex items-center gap-4 ml-6 text-sm text-zinc-600 dark:text-zinc-300">
-        <a href="#" className="hover:text-zinc-900 dark:hover:text-white flex items-center gap-1"><Flame className="h-4 w-4"/>Trending</a>
-        <a href="#" className="hover:text-zinc-900 dark:hover:text-white flex items-center gap-1"><Film className="h-4 w-4"/>Movies</a>
-        <a href="#" className="hover:text-zinc-900 dark:hover:text-white flex items-center gap-1"><Tv2 className="h-4 w-4"/>Series</a>
+        <a href="/trending" className="hover:text-zinc-900 dark:hover:text-white flex items-center gap-1"><Flame className="h-4 w-4"/>Trending</a>
+        <a href="/movies" className="hover:text-zinc-900 dark:hover:text-white flex items-center gap-1"><Film className="h-4 w-4"/>Movies</a>
+        <a href="/series" className="hover:text-zinc-900 dark:hover:text-white flex items-center gap-1"><Tv2 className="h-4 w-4"/>Series</a>
       </nav>
       <div className="ml-auto flex-1 md:flex-none" />
       <SearchBar value={query} onChange={setQuery} onSubmit={onSearch} />

@@ -1,35 +1,66 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
-import Player from './Player';
+import { useEffect, useRef } from 'react';
+import Video from './Video';
 
-export default function PlayerDrawer({ open, onClose, src, title }) {
+export default function PlayerDrawer({
+  open = false,
+  onClose,
+  videoId,
+  type = 'movie',
+  season,
+  episode,
+  title,
+}) {
+  const overlayRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const handleOverlayClick = (e) => {
+    if (e.target === overlayRef.current) {
+      onClose?.();
+    }
+  };
+
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-            className="absolute inset-x-0 bottom-0 max-h-[90vh] overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-zinc-950"
-          >
-            <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
-              <div className="font-semibold line-clamp-1 pr-4">{title || 'Now Playing'}</div>
-              <button onClick={onClose} className="text-sm rounded-xl border px-3 py-1.5 dark:border-zinc-700">Close</button>
-            </div>
-            <div className="p-4">
-              {!src ? (
-                <div className="flex items-center gap-2 text-zinc-500"><Loader2 className="h-4 w-4 animate-spin"/> Loading stream…</div>
-              ) : (
-                <Player src={src} />
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+      aria-modal="true"
+      role="dialog"
+    >
+      <div className="relative w-full max-w-5xl mx-auto p-4">
+        <button
+          onClick={onClose}
+          aria-label="Close player"
+          className="absolute -top-2 -right-2 bg-white/10 hover:bg-white/20 text-white rounded-full w-10 h-10 flex items-center justify-center"
+        >
+          ✕
+        </button>
+
+        {title ? (
+          <div className="mb-3 text-white text-sm opacity-80">
+            {title}
+          </div>
+        ) : null}
+
+        <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
+          <Video
+            videoId={videoId}
+            type={type}
+            season={season}
+            episode={episode}
+          />
+        </div>
+      </div>
+    </div>
   );
 }

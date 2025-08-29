@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Header, Footer, PlayerDrawer } from './components';
 import HomePage from './pages/HomePage';
+import MoviesPage from './pages/MoviesPage';
+import SeriesPage from './pages/SeriesPage';
+import MovieDetailPage from './pages/MovieDetailPage';
+import SerieDetailPage from './pages/SerieDetailPage';
+import TrendingMovieSerie from './pages/TrendingMovieSerie';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useFetch } from './hooks/useFetch';
 import { usePlayer } from './hooks/usePlayer';
 import './styles/globals.css';
@@ -23,23 +29,39 @@ export default function App() {
   const [dark, setDark] = useDarkMode();
   const [activeTab, setActiveTab] = useState('trending');
   const [query, setQuery] = useState('');
+  // Route-based navigation; no manual page switching
 
   const { featured, items, loading } = useFetch({ activeTab, query });
-  const { open, src, title, playItem, close } = usePlayer();
+  const { open, videoId, title, kind, playItem, close } = usePlayer();
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <Header dark={dark} setDark={setDark} query={query} setQuery={setQuery} onSearch={() => { /* no-op; fetch runs via effects */ }} />
-      <HomePage
-        featured={featured}
-        items={items}
-        loading={loading}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onPlay={playItem}
-      />
-      <Footer />
-      <PlayerDrawer open={open} onClose={close} src={src} title={title} />
+      <Router>
+        <Header dark={dark} setDark={setDark} query={query} setQuery={setQuery} onSearch={() => { /* no-op; fetch runs via effects */ }} />
+        <Routes>
+          <Route
+            path="/"
+            element={(
+              <HomePage
+                featured={featured}
+                items={items}
+                loading={loading}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                onPlay={playItem}
+              />
+            )}
+          />
+          <Route path="/movies" element={<MoviesPage onPlay={playItem} />} />
+          <Route path="/series" element={<SeriesPage onPlay={playItem} />} />
+          <Route path="/trending" element={<TrendingMovieSerie onPlay={playItem} />} />
+          <Route path="/movie/:id" element={<MovieDetailPage onPlay={playItem} />} />
+          <Route path="/series/:id" element={<SerieDetailPage onPlay={playItem} />} />
+        </Routes>
+        <Footer />
+      </Router>
+
+      <PlayerDrawer open={open} onClose={close} videoId={videoId} title={title} kind={kind} />
     </div>
   );
 }

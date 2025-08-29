@@ -23,7 +23,7 @@ export default function MovieGrid({ items = [], loading = false, onPlay }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
       {items.map(item => (
-        <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+        <motion.div key={`${item.type}-${item.id}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
           <MovieCard item={item} onPlay={() => onPlay?.(item)} />
         </motion.div>
       ))}

@@ -1,25 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { MovieGrid, SearchBar } from '../components';
-import { useCollection } from '../hooks/useCollection';
+import { MovieGrid } from '../components';
+import { useRecommended } from '../hooks/useRecommended';
 
-export default function MoviesPage({ onPlay }) {
-  const [sort, setSort] = useState('popular');
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+export default function TrendingMovieSerie({ onPlay }) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [maxPage, setMaxPage] = useState(1);
 
-  const { items, loading } = useCollection({ type: 'movie', sort, search, limit: 0, page });
-
-  const applySearch = () => setSearch(searchInput.trim());
-
-  // Reset paging when filters change
-  useEffect(() => {
-    setPage(1);
-    setHasMore(true);
-    setMaxPage(1);
-  }, [sort, search]);
+  // Mixed trending items (movies + series), no filters
+  const { items, loading } = useRecommended({ sort: 'trending', page });
 
   // Detect last page (no items returned)
   useEffect(() => {
@@ -48,20 +37,8 @@ export default function MoviesPage({ onPlay }) {
       <header className="pt-6 mb-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">All Movies</h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Browse our full catalog and filter by search or sort.</p>
-          </div>
-          <div className="flex w-full sm:w-auto items-center gap-3">
-            <SearchBar value={searchInput} onChange={setSearchInput} onSubmit={applySearch} />
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm shadow-sm outline-none hover:border-zinc-300 focus:border-zinc-400 dark:bg-zinc-900 dark:border-zinc-800 dark:focus:border-zinc-700"
-            >
-              <option value="popular">Popular</option>
-              <option value="trending">Trending</option>
-              <option value="top_rated">Top Rated</option>
-            </select>
+            <h1 className="text-2xl font-bold">Trending Movies & Series</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Browse everything that’s trending right now.</p>
           </div>
         </div>
       </header>
