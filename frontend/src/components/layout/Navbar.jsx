@@ -1,8 +1,17 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Film, Flame, Tv2, Moon, SunMedium } from 'lucide-react';
 import SearchBar from '../ui/SearchBar';
 
 export default function Navbar({ dark, setDark, query, setQuery, onSearch }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const pathname = location?.pathname || '/';
+  const scope = pathname.startsWith('/series') ? 'series' : (pathname.startsWith('/movies') ? 'movies' : 'all');
+  const handleSubmit = () => {
+    const q = (query || '').trim();
+    navigate(`/search?q=${encodeURIComponent(q)}`);
+  };
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-3">
       <a href="/" className="group flex items-center gap-2 md:gap-3 font-semibold tracking-tight text-xl md:text-2xl">
@@ -17,7 +26,7 @@ export default function Navbar({ dark, setDark, query, setQuery, onSearch }) {
         <a href="/series" className="hover:text-zinc-900 dark:hover:text-white flex items-center gap-1"><Tv2 className="h-4 w-4"/>Series</a>
       </nav>
       <div className="ml-auto flex-1 md:flex-none" />
-      <SearchBar value={query} onChange={setQuery} onSubmit={onSearch} />
+      <SearchBar value={query} onChange={setQuery} onSubmit={handleSubmit} scope={scope} />
       <button
         onClick={() => setDark(!dark)}
         className="ml-3 inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm shadow-sm hover:bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800"

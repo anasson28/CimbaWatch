@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProxyController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,3 +17,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Proxy embed route (served without /api prefix for iframe src)
+Route::get('/proxy/embed/{type}/{id}', [ProxyController::class, 'embed']);
+// Generic ad-filtering fetch proxy
+Route::get('/proxy/fetch', [ProxyController::class, 'fetch']);

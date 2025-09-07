@@ -1,33 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Clock, Calendar, Download } from 'lucide-react';
+import { Star, Clock, Calendar } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { fetchMovie } from '../api';
 import { useCollection } from '../hooks/useCollection';
 import MovieGrid from '../components/movies/MovieGrid';
-import { API_BASE } from '../api/http';
+import Video from '../components/player/Video';
+import { extractIdFromSlug, slugToQuery } from '../utils/slug';
+import { http } from '../api/http';
 
 
 export default function MovieDetailPage({ onPlay }) {
-  const { id } = useParams();
+  const { slug } = useParams();
+  const numericId = extractIdFromSlug(slug);
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Provider switch for iframe embed
+  const [provider, setProvider] = useState('vidapi'); // 'vidapi' default
 
-  // Fetch movie details by ID from URL
+  const serverOptions = [
+    { key: 'vidapi', label: 'Server 1', hint: 'vidapi' },
+    { key: '2embed', label: 'Server 2', hint: '2embed' },
+    { key: 'embed_su', label: 'Server 3', hint: 'embed.su' },
+  ];
+
+  // Fetch movie details by slug (extract id), fallback to search by title words
   useEffect(() => {
     let mounted = true;
     setLoading(true);
     setError(null);
-    fetchMovie(id)
-      .then((data) => {
-        if (!mounted) return;
-        const normalized = data?.type ? data : { ...data, type: 'movie' };
-        setMovie(normalized);
-      })
-      .catch((e) => { if (mounted) setError(e); })
-      .finally(() => { if (mounted) setLoading(false); });
+    async function load() {
+      try {
+        if (numericId) {
+          const data = await fetchMovie(numericId);
+          if (!mounted) return;
+          const normalized = data?.type ? data : { ...data, type: 'movie' };
+          setMovie(normalized);
+          return;
+        }
+        // Fallback: search by slug query and pick the best match
+        const q = slugToQuery(slug);
+        const { data } = await http.get('/api/movies', { params: { search: q, page: 1 } });
+        const first = data?.results?.[0];
+        if (first?.id) {
+          const full = await fetchMovie(first.id);
+          if (!mounted) return;
+          const normalized = full?.type ? full : { ...full, type: 'movie' };
+          setMovie(normalized);
+        } else {
+          if (!mounted) return;
+          setMovie(null);
+        }
+      } catch (e) {
+        if (mounted) setError(e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
     return () => { mounted = false; };
-  }, [id]);
+  }, [slug]);
 
   // Similar movies (trending as a simple proxy)
   const similar = useCollection({ type: 'movie', sort: 'trending', limit: 12 });
@@ -106,29 +138,42 @@ export default function MovieDetailPage({ onPlay }) {
       {/* Section 2: streaming */}
       <section className="mt-12">
         <h2 className="text-xl font-semibold mb-4">Streaming</h2>
-        <div className="mb-3">
-          <a
-            href={`${API_BASE}/player.php?video_id=${movie.id}&tmdb=1`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 hover:bg-white dark:hover:bg-zinc-800"
-          >
-            <Download className="h-4 w-4" /> Download
-          </a>
-        </div>
-        <div className="relative w-full overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
-          <div className="relative w-full pt-[56.25%] bg-black">
-            <div className="absolute inset-0">
-              <iframe
-                src={`${API_BASE}/player.php?video_id=${movie.id}&tmdb=1`}
-                title="Player"
-                className="w-full h-full"
-                allow="autoplay; fullscreen"
-                allowFullScreen
-                frameBorder="0"
-              />
-            </div>
+        <div className="relative w-full overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-gradient-to-br from-zinc-900 to-black p-[2px] aspect-video">
+          <div className="relative w-full h-full rounded-[10px] overflow-hidden bg-black">
+            <Video videoId={movie.id} type="movie" provider={provider} />
           </div>
+          <div className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-md bg-white/10 text-white/80 tracking-wide">
+            {provider === 'auto' ? 'Auto' : serverOptions.find(s => s.key === provider)?.label}
+          </div>
+        </div>
+
+        {/* Server selector beneath video */}
+        <div className="mt-4 grid gap-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-zinc-500 dark:text-zinc-400">Choose a server</div>
+            <button
+              className={`text-xs px-3 py-1 rounded-full border transition-colors ${provider === 'auto' ? 'bg-zinc-900 text-white border-zinc-800' : 'bg-transparent text-zinc-600 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700'}`}
+              onClick={() => setProvider('auto')}
+              title="Let us choose the best server automatically"
+            >
+              Auto select
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {serverOptions.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setProvider(s.key)}
+                aria-pressed={provider === s.key}
+                className={`group relative flex items-center justify-between rounded-xl border px-4 py-3 transition-colors ${provider === s.key ? 'border-zinc-800 bg-zinc-900 text-white' : 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200'}`}
+              >
+                <div className="font-medium">{s.label}</div>
+                <div className="text-xs opacity-70">{s.hint}</div>
+                <span className={`absolute inset-0 rounded-xl pointer-events-none ${provider === s.key ? 'ring-1 ring-zinc-700' : ''}`}></span>
+              </button>
+            ))}
+          </div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 text-center">If a server doesn’t play, try another.</div>
         </div>
       </section>
 

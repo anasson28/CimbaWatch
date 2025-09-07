@@ -48,4 +48,9 @@ return [
         'timeout' => env('PROVIDERS_TIMEOUT', 30),
     ],
 
+    'servers_resolver' => [
+        'api_url' => env('SERVERS_RESOLVER_URL', 'http://localhost:3002'),
+        'timeout' => env('SERVERS_RESOLVER_TIMEOUT', 20),
+    ],
+
 ];

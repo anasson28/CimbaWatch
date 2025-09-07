@@ -3,10 +3,11 @@ import { motion } from 'framer-motion';
 import { Play, ChevronRight, Star, Download } from 'lucide-react';
 import Button from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
+import { buildSlug } from '../../utils/slug';
 
 export default function HeroSection({ featured, onPlay, image, disableBackdrop = false }) {
   const navigate = useNavigate();
-  const targetPath = featured ? (featured.type === 'series' ? `/series/${featured.id}` : `/movie/${featured.id}`) : null;
+  const targetPath = featured ? (featured.type === 'series' ? `/series/${buildSlug(featured.title, featured.id)}` : `/movie/${buildSlug(featured.title, featured.id)}`) : null;
   return (
     <div className="relative overflow-hidden rounded-3xl">
       {/* Backdrop */}

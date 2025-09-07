@@ -6,6 +6,7 @@ import SeriesPage from './pages/SeriesPage';
 import MovieDetailPage from './pages/MovieDetailPage';
 import SerieDetailPage from './pages/SerieDetailPage';
 import TrendingMovieSerie from './pages/TrendingMovieSerie';
+import SearchResultsPage from './pages/SearchResultsPage';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useFetch } from './hooks/useFetch';
 import { usePlayer } from './hooks/usePlayer';
@@ -55,13 +56,20 @@ export default function App() {
           <Route path="/movies" element={<MoviesPage onPlay={playItem} />} />
           <Route path="/series" element={<SeriesPage onPlay={playItem} />} />
           <Route path="/trending" element={<TrendingMovieSerie onPlay={playItem} />} />
-          <Route path="/movie/:id" element={<MovieDetailPage onPlay={playItem} />} />
-          <Route path="/series/:id" element={<SerieDetailPage onPlay={playItem} />} />
+          <Route path="/search" element={<SearchResultsPage onPlay={playItem} />} />
+          <Route path="/movie/:slug" element={<MovieDetailPage onPlay={playItem} />} />
+          <Route path="/series/:slug" element={<SerieDetailPage onPlay={playItem} />} />
         </Routes>
         <Footer />
       </Router>
 
-      <PlayerDrawer open={open} onClose={close} videoId={videoId} title={title} kind={kind} />
+      <PlayerDrawer
+        open={open}
+        onClose={close}
+        videoId={videoId}
+        title={title}
+        type={kind === 'series' ? 'tv' : 'movie'}
+      />
     </div>
   );
 }

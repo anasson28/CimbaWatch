@@ -1,7 +1,7 @@
 import {useEffect, useMemo, useRef, useState} from "react";
 import Hls from "hls.js";
 
-export default function MultiServerPlayer({ type="movie", id, season, episode }) {
+export default function MultiServerPlayer({ type="movie", id, season, episode, usePuppeteer = false }) {
   const [servers, setServers] = useState([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const videoRef = useRef(null);
@@ -12,6 +12,7 @@ export default function MultiServerPlayer({ type="movie", id, season, episode })
       const q = new URLSearchParams();
       if (season) q.set("season", season);
       if (episode) q.set("episode", episode);
+      if (usePuppeteer) q.set("puppeteer", "1");
 
       const res = await fetch(`/api/sources/${type}/${id}?${q.toString()}`);
       const data = await res.json();
@@ -19,7 +20,7 @@ export default function MultiServerPlayer({ type="movie", id, season, episode })
       setActiveIdx(0);
     }
     loadServers();
-  }, [type, id, season, episode]);
+  }, [type, id, season, episode, usePuppeteer]);
 
   const activeServer = useMemo(() => servers[activeIdx], [servers, activeIdx]);
 
@@ -100,6 +101,8 @@ export default function MultiServerPlayer({ type="movie", id, season, episode })
             className="w-full h-full rounded-lg"
             allowFullScreen
             frameBorder="0"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-downloads"
+            allow="autoplay; encrypted-media; picture-in-picture"
             referrerPolicy="no-referrer"
             loading="lazy"
             title={activeServer.name}

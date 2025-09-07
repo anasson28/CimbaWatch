@@ -51,7 +51,7 @@ export default function SeriesPage({ onPlay }) {
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Browse our full catalog and filter by search or sort.</p>
           </div>
           <div className="flex w-full sm:w-auto items-center gap-3">
-            <SearchBar value={searchInput} onChange={setSearchInput} onSubmit={applySearch} />
+            <SearchBar value={searchInput} onChange={setSearchInput} onSubmit={applySearch} scope="series" />
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}

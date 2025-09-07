@@ -1,16 +1,18 @@
 import React from 'react';
 import { Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { buildSlug } from '../../utils/slug';
 
 export default function MovieCard({ item, onPlay }) {
   const navigate = useNavigate();
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
+      const slug = buildSlug(item?.title, item?.id);
       if (item?.type === 'movie') {
-        navigate(`/movie/${item.id}`);
+        navigate(`/movie/${slug}`);
       } else if (item?.type === 'series') {
-        navigate(`/series/${item.id}`);
+        navigate(`/series/${slug}`);
       } else {
         onPlay?.();
       }
@@ -22,8 +24,9 @@ export default function MovieCard({ item, onPlay }) {
       role="button"
       tabIndex={0}
       onClick={() => {
-        if (item?.type === 'movie') navigate(`/movie/${item.id}`);
-        else if (item?.type === 'series') navigate(`/series/${item.id}`);
+        const slug = buildSlug(item?.title, item?.id);
+        if (item?.type === 'movie') navigate(`/movie/${slug}`);
+        else if (item?.type === 'series') navigate(`/series/${slug}`);
         else onPlay?.();
       }}
       onKeyDown={handleKeyDown}

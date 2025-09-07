@@ -1,35 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Clock, Calendar, Download } from 'lucide-react';
+import { Star, Clock, Calendar } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { fetchSeries } from '../api';
 import { useCollection } from '../hooks/useCollection';
 import MovieGrid from '../components/movies/MovieGrid';
-import { API_BASE } from '../api/http';
+import Video from '../components/player/Video';
+import { extractIdFromSlug, slugToQuery } from '../utils/slug';
+import { http } from '../api/http';
 // Using backend PHP player via iframe
 
 export default function SerieDetailPage({ onPlay }) {
-  const { id } = useParams();
+  const { slug } = useParams();
+  const numericId = extractIdFromSlug(slug);
   const [series, setSeries] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [season, setSeason] = useState(null);
   const [episode, setEpisode] = useState(1);
+  // Provider switch for iframe embed
+  const [provider, setProvider] = useState('vidapi'); // default to vidapi
 
-  // Fetch series details by ID from URL
+  const serverOptions = [
+    { key: 'vidapi', label: 'Server 1', hint: 'vidapi' },
+    { key: '2embed', label: 'Server 2', hint: '2embed' },
+    { key: 'embed_su', label: 'Server 3', hint: 'embed.su' },
+  ];
+
+  // Fetch series details by slug (extract id), fallback to search by title words
   useEffect(() => {
     let mounted = true;
     setLoading(true);
     setError(null);
-    fetchSeries(id)
-      .then((data) => {
+    async function load() {
+      try {
+        let data = null;
+        if (numericId) {
+          data = await fetchSeries(numericId);
+        } else {
+          const q = slugToQuery(slug);
+          const { data: res } = await http.get('/api/series', { params: { search: q, page: 1 } });
+          const first = res?.results?.[0];
+          if (first?.id) {
+            data = await fetchSeries(first.id);
+          }
+        }
         if (!mounted) return;
-        const normalized = data?.type ? data : { ...data, type: 'series' };
-        setSeries(normalized);
-      })
-      .catch((e) => { if (mounted) setError(e); })
-      .finally(() => { if (mounted) setLoading(false); });
+        if (data) {
+          const normalized = data?.type ? data : { ...data, type: 'series' };
+          setSeries(normalized);
+          const seasons = (normalized.seasonEpisodes || []).map(s => s.season).filter(Boolean);
+          if (seasons.length && (season == null)) setSeason(Math.min(...seasons));
+        } else {
+          setSeries(null);
+        }
+      } catch (e) {
+        if (mounted) setError(e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
     return () => { mounted = false; };
-  }, [id]);
+  }, [slug]);
 
   // Similar series (trending as a simple proxy)
   const similar = useCollection({ type: 'series', sort: 'trending', limit: 12 });
@@ -124,77 +156,92 @@ export default function SerieDetailPage({ onPlay }) {
 
       {/* Section 2: streaming */}
       <section className="mt-12">
-        <h2 className="text-xl font-semibold mb-4">Streaming</h2>
-        {/* Season/Episode selectors (only if seasons info available) */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Streaming</h2>
+        </div>
+
+        {/* Seasons/Episodes enhanced UI */}
         {Array.isArray(series.seasonEpisodes) && series.seasonEpisodes.length > 0 ? (
-          <div className="mb-4 flex flex-wrap gap-3">
+          <div className="mb-4 space-y-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300 mb-1">Season</label>
-              <select
-                value={season ?? ''}
-                onChange={(e) => { const s = Number(e.target.value); setSeason(s); setEpisode(1); }}
-                className="rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
-              >
-                {(series.seasonEpisodes || [])
-                  .filter((s) => typeof s?.season === 'number' && (s.season ?? 0) >= 1 && (s.episodes ?? 0) > 0)
-                  .sort((a, b) => a.season - b.season)
-                  .map((s) => (
-                    <option key={s.season} value={s.season}>Season {s.season}</option>
-                  ))}
-              </select>
+              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-300 mb-1">Seasons</div>
+              <div className="overflow-x-auto">
+                <div className="flex gap-2">
+                  {(series.seasonEpisodes || [])
+                    .filter((s) => typeof s?.season === 'number' && (s.season ?? 0) >= 1 && (s.episodes ?? 0) > 0)
+                    .sort((a, b) => a.season - b.season)
+                    .map((s) => (
+                      <button
+                        key={s.season}
+                        onClick={() => { setSeason(s.season); setEpisode(1); }}
+                        className={`px-3 py-1.5 rounded-full border text-sm transition-colors ${season === s.season ? 'bg-zinc-900 text-white border-zinc-800' : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700'}`}
+                      >
+                        S{s.season}
+                      </button>
+                    ))}
+                </div>
+              </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300 mb-1">Episode</label>
-              <select
-                value={episode}
-                onChange={(e) => setEpisode(Number(e.target.value))}
-                className="rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
-              >
+              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-300 mb-1">Episodes</div>
+              <div className="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-12 gap-2">
                 {(() => {
                   const meta = (series.seasonEpisodes || []).find((s) => s.season === season);
                   const count = meta?.episodes ?? 1;
                   return Array.from({ length: count }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>Episode {n}</option>
+                    <button
+                      key={n}
+                      onClick={() => setEpisode(n)}
+                      className={`px-2 py-1.5 text-sm rounded-md border transition-colors ${episode === n ? 'bg-zinc-900 text-white border-zinc-800' : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700'}`}
+                    >
+                      {n}
+                    </button>
                   ));
                 })()}
-              </select>
+              </div>
             </div>
           </div>
         ) : null}
 
-        <div className="mb-3">
-          <a
-            href={
-              season && episode
-                ? `${API_BASE}/player.php?video_id=${series.id}&tmdb=1&s=${season}&e=${episode}`
-                : `${API_BASE}/player.php?video_id=${series.id}&tmdb=1`
-            }
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 hover:bg-white dark:hover:bg-zinc-800"
-          >
-            <Download className="h-4 w-4" /> Download
-          </a>
+        {/* Video with gradient frame */}
+        <div className="relative w-full overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-gradient-to-br from-zinc-900 to-black p-[2px] aspect-video">
+          <div className="relative w-full h-full rounded-[10px] overflow-hidden bg-black">
+            {season != null && (
+              <Video videoId={series.id} type="tv" season={season} episode={episode} provider={provider} />
+            )}
+          </div>
+          <div className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-md bg-white/10 text-white/80 tracking-wide">
+            {provider === 'auto' ? 'Auto' : serverOptions.find(s => s.key === provider)?.label}
+          </div>
         </div>
 
-        {/* Embedded PHP Player */}
-        <div className="relative w-full overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
-          <div className="relative w-full pt-[56.25%] bg-black">
-            <div className="absolute inset-0">
-              <iframe
-                src={
-                  season && episode
-                    ? `${API_BASE}/player.php?video_id=${series.id}&tmdb=1&s=${season}&e=${episode}`
-                    : `${API_BASE}/player.php?video_id=${series.id}&tmdb=1`
-                }
-                title="Player"
-                className="w-full h-full"
-                allow="autoplay; fullscreen"
-                allowFullScreen
-                frameBorder="0"
-              />
-            </div>
+        {/* Server selector beneath video */}
+        <div className="mt-4 grid gap-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-zinc-500 dark:text-zinc-400">Choose a server</div>
+            <button
+              className={`text-xs px-3 py-1 rounded-full border transition-colors ${provider === 'auto' ? 'bg-zinc-900 text-white border-zinc-800' : 'bg-transparent text-zinc-600 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700'}`}
+              onClick={() => setProvider('auto')}
+              title="Let us choose the best server automatically"
+            >
+              Auto select
+            </button>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {serverOptions.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setProvider(s.key)}
+                aria-pressed={provider === s.key}
+                className={`group relative flex items-center justify-between rounded-xl border px-4 py-3 transition-colors ${provider === s.key ? 'border-zinc-800 bg-zinc-900 text-white' : 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200'}`}
+              >
+                <div className="font-medium">{s.label}</div>
+                <div className="text-xs opacity-70">{s.hint}</div>
+                <span className={`absolute inset-0 rounded-xl pointer-events-none ${provider === s.key ? 'ring-1 ring-zinc-700' : ''}`}></span>
+              </button>
+            ))}
+          </div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 text-center">If a server doesn’t play, try another.</div>
         </div>
       </section>
 
