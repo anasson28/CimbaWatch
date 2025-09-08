@@ -35,8 +35,10 @@ class TmdbService
     // -------- Collections --------
     public function trending(string $type = 'movie', int $page = 1)
     {
-        return Cache::remember("tmdb:trending:$type:$page", 600, function () use ($type, $page) {
-            return $this->get("/trending/{$type}/week", ['page' => $page]);
+        // Map internal 'series' and 'tv' to TMDB 'tv'
+        $tmdbType = ($type === 'series' || $type === 'tv') ? 'tv' : 'movie';
+        return Cache::remember("tmdb:trending:$type:$page", 600, function () use ($tmdbType, $page) {
+            return $this->get("/trending/{$tmdbType}/week", ['page' => $page]);
         });
     }
 
@@ -79,20 +81,53 @@ class TmdbService
         });
     }
 
+    public function movieExternalIds(int $id)
+    {
+        return Cache::remember("tmdb:movie_ext_ids:$id", 3600, function () use ($id) {
+            return $this->get("/movie/{$id}/external_ids");
+        });
+    }
+
+    protected function genreMap(string $type = 'movie'): array
+    {
+        $cacheKey = "tmdb:genres:{$type}";
+        return Cache::remember($cacheKey, 86400, function () use ($type) {
+            $path = $type === 'movie' ? '/genre/movie/list' : '/genre/tv/list';
+            $res = $this->get($path);
+            $map = [];
+            foreach (($res['genres'] ?? []) as $g) {
+                $map[(int)($g['id'] ?? 0)] = (string)($g['name'] ?? '');
+            }
+            return $map;
+        });
+    }
+
     // -------- Mappers (to your frontend shape) --------
     public function mapCard(array $raw): array
     {
-        $title  = $raw['title'] ?? $raw['name'] ?? 'Untitled';
-        $year   = substr(($raw['release_date'] ?? $raw['first_air_date'] ?? ''), 0, 4);
-        $poster = $raw['poster_path'] ? "{$this->imgBase}/w342{$raw['poster_path']}" : null;
+        $title    = $raw['title'] ?? $raw['name'] ?? 'Untitled';
+        $year     = substr(($raw['release_date'] ?? $raw['first_air_date'] ?? ''), 0, 4);
+        $poster   = $raw['poster_path'] ? "{$this->imgBase}/w342{$raw['poster_path']}" : null;
+        $isMovie  = isset($raw['title']);
+        $lang     = $raw['original_language'] ?? null;
+        $countries= !$isMovie ? (array)($raw['origin_country'] ?? []) : [];
+        $genreIds = (array)($raw['genre_ids'] ?? []);
+        $gmap     = $this->genreMap($isMovie ? 'movie' : 'tv');
+        $genres   = array_values(array_filter(array_map(function ($id) use ($gmap) {
+            $id = (int)$id;
+            return $gmap[$id] ?? null;
+        }, $genreIds)));
 
         return [
             'id'     => $raw['id'],
-            'type'   => isset($raw['title']) ? 'movie' : 'series',
+            'type'   => $isMovie ? 'movie' : 'series',
             'title'  => $title,
             'year'   => $year ?: null,
             'rating' => round((float)($raw['vote_average'] ?? 0), 1),
             'poster' => $poster,
+            'language' => $lang ?: null,
+            'countries' => $countries,
+            'genres' => $genres,
         ];
     }
 

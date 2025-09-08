@@ -9,6 +9,8 @@ export default function PlayerDrawer({
   season,
   episode,
   title,
+  poster,
+  backdrop,
 }) {
   const overlayRef = useRef(null);
 
@@ -58,6 +60,8 @@ export default function PlayerDrawer({
             type={type}
             season={season}
             episode={episode}
+            coverImage={backdrop || poster}
+            title={title}
           />
         </div>
       </div>

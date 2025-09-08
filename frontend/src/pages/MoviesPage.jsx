@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MovieGrid, SearchBar } from '../components';
+import FiltersBar from '../components/ui/FiltersBar';
 import { useCollection } from '../hooks/useCollection';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 
 export default function MoviesPage({ onPlay }) {
   const [sort, setSort] = useState('popular');
@@ -11,8 +13,27 @@ export default function MoviesPage({ onPlay }) {
   const [maxPage, setMaxPage] = useState(1);
 
   const { items, loading } = useCollection({ type: 'movie', sort, search, limit: 0, page });
+  // aggregated list for infinite scroll
+  const [list, setList] = useState([]);
+  useEffect(() => {
+    setList((prev) => (page === 1 ? items : [...prev, ...items]));
+  }, [items, page]);
+
+  // Auto-load more toggle
+  const [autoLoadMore, setAutoLoadMore] = useState(() => {
+    try {
+      const v = localStorage.getItem('auto_load_more_movies');
+      return v ? JSON.parse(v) : true;
+    } catch { return true; }
+  });
+  useEffect(() => {
+    localStorage.setItem('auto_load_more_movies', JSON.stringify(autoLoadMore));
+  }, [autoLoadMore]);
 
   const applySearch = () => setSearch(searchInput.trim());
+
+  // Advanced filters state
+  const [filters, setFilters] = useState({ genre: '', year: '', rating: '', language: '', country: '' });
 
   // Reset paging when filters change
   useEffect(() => {
@@ -29,6 +50,47 @@ export default function MoviesPage({ onPlay }) {
       setPage((p) => Math.max(1, p - 1));
     }
   }, [loading, items, page]);
+
+  // Infinite scroll sentinel
+  const sentinelRef = useInfiniteScroll({
+    loading,
+    hasMore,
+    onLoadMore: () => setPage((p) => p + 1),
+    rootMargin: '600px',
+  });
+
+  // Compute filter options from aggregated items
+  const filterOptions = useMemo(() => {
+    const languages = new Set();
+    const countries = new Set();
+    const genres = new Set();
+    for (const it of list) {
+      if (it?.language) languages.add(String(it.language).toLowerCase());
+      (it?.countries || []).forEach((c) => countries.add(String(c).toUpperCase()));
+      (it?.genres || []).forEach((g) => genres.add(String(g)));
+    }
+    return {
+      languages: Array.from(languages),
+      countries: Array.from(countries),
+      genres: Array.from(genres),
+    };
+  }, [list]);
+
+  // Apply filters client-side
+  const filteredItems = useMemo(() => {
+    const { genre, year, rating, language, country } = filters;
+    const langNorm = (language || '').toLowerCase();
+    const countryNorm = (country || '').toUpperCase();
+    const minRating = rating ? Number(rating) : null;
+    return list.filter((it) => {
+      if (genre && !(it.genres || []).includes(genre)) return false;
+      if (year && String(it.year || '') !== String(year)) return false;
+      if (minRating != null && Number(it.rating || 0) < minRating) return false;
+      if (langNorm && String(it.language || '').toLowerCase() !== langNorm) return false;
+      if (countryNorm && !((it.countries || []).map((c) => String(c).toUpperCase()).includes(countryNorm))) return false;
+      return true;
+    });
+  }, [list, filters]);
 
   const pagesToShow = useMemo(() => {
     const windowSize = 5;
@@ -52,7 +114,7 @@ export default function MoviesPage({ onPlay }) {
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Browse our full catalog and filter by search or sort.</p>
           </div>
           <div className="flex w-full sm:w-auto items-center gap-3">
-            <SearchBar value={searchInput} onChange={setSearchInput} onSubmit={applySearch} />
+            <SearchBar value={searchInput} onChange={setSearchInput} onSubmit={applySearch} scope="movies" />
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
@@ -62,11 +124,21 @@ export default function MoviesPage({ onPlay }) {
               <option value="trending">Trending</option>
               <option value="top_rated">Top Rated</option>
             </select>
+            <div className="flex items-center gap-2 text-xs">
+              <input id="auto-load-movies" type="checkbox" checked={autoLoadMore} onChange={(e) => setAutoLoadMore(e.target.checked)} className="h-4 w-4" />
+              <label htmlFor="auto-load-movies" className="text-zinc-600 dark:text-zinc-400">Auto-load more</label>
+            </div>
           </div>
+        </div>
+        <div className="mt-4">
+          <FiltersBar filters={filters} onChange={setFilters} options={filterOptions} />
         </div>
       </header>
 
-      <MovieGrid items={items} loading={loading} onPlay={onPlay} />
+      <MovieGrid items={filteredItems} loading={loading && page === 1} onPlay={onPlay} />
+
+      {/* Infinite scroll sentinel */}
+      {autoLoadMore && <div ref={sentinelRef} className="h-10" />}
 
       {/* Pagination */}
       <nav className="mt-8 flex items-center justify-center gap-2" aria-label="Pagination">

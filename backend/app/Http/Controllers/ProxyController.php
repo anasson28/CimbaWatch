@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use App\Services\TmdbService;
 
 class ProxyController extends Controller
 {
@@ -16,7 +17,7 @@ class ProxyController extends Controller
         $episode = $request->query('e');
 
         try {
-            // Choose provider (supported): embed.su, 2embed.cc, vidapi.xyz, or 'auto'
+            // Choose provider (supported): embed.su, 2embed.cc, vidapi.xyz, 123embed, vidplus, autoembed, or 'auto'
             $providerRaw = $request->query('provider', 'auto');
             $provider = (string) Str::of($providerRaw)->lower()->replace(['.', '-'], '_');
             switch ($provider) {
@@ -29,6 +30,15 @@ class ProxyController extends Controller
                 case 'vidapi':
                     $base = 'https://vidapi.xyz';
                     break;
+                case '123embed':
+                    $base = 'https://play.123embed.net';
+                    break;
+                case 'vidplus':
+                    $base = 'https://player.vidplus.to';
+                    break;
+                case 'autoembed':
+                    $base = 'https://player.autoembed.cc';
+                    break;
                 case 'auto':
                     $base = '';
                     break;
@@ -36,10 +46,26 @@ class ProxyController extends Controller
                     return response('Invalid provider', 400);
             }
 
+            // 123embed is supported for movies only; fall back to auto otherwise
+            if ($provider === '123embed' && $type !== 'movie') {
+                $provider = 'auto';
+            }
+
             // Build candidate URLs depending on provider/type
             $candidates = [];
             if ($type === 'movie') {
+                // Resolve IMDb ID to support 123embed
+                $imdbId = null;
+                try {
+                    $ext = app(TmdbService::class)->movieExternalIds((int) $id);
+                    $imdbId = $ext['imdb_id'] ?? null;
+                } catch (\Exception $e) {
+                    // ignore resolution errors; other providers will still work
+                }
                 $candidates = [
+                    '123embed' => $imdbId ? ('https://play.123embed.net/mv/' . $imdbId) : null,
+                    'vidplus'  => 'https://player.vidplus.to/embed/movie/' . $id,
+                    'autoembed'=> 'https://player.autoembed.cc/embed/movie/' . $id,
                     'embed_su' => 'https://embed.su/embed/movie/' . $id,
                     '2embed'   => 'https://www.2embed.cc/embed/' . $id,
                     // For vidapi prefer multi first, fallback to single
@@ -50,6 +76,8 @@ class ProxyController extends Controller
                 $s = (int) ($season ?? 1);
                 $e = (int) ($episode ?? 1);
                 $candidates = [
+                    'vidplus'  => "https://player.vidplus.to/embed/tv/{$id}/{$s}/{$e}",
+                    'autoembed'=> "https://player.autoembed.cc/embed/tv/{$id}/{$s}/{$e}",
                     'embed_su' => "https://embed.su/embed/tv/{$id}/{$s}/{$e}",
                     '2embed'   => "https://www.2embed.cc/embedtv/{$id}?s={$s}&e={$e}",
                     'vidapi'   => "https://vidapi.xyz/embed/tv/{$id}?s={$s}&e={$e}",
@@ -70,12 +98,22 @@ class ProxyController extends Controller
                 return response('Invalid type', 400);
             }
 
+            // Keep a copy before filtering by provider for fallback purposes
+            $allCandidates = array_filter($candidates);
+
+            // Drop any empty candidates (e.g., when IMDb is unavailable)
+            $candidates = $allCandidates;
+
             // If a specific provider is requested (not auto), filter candidates accordingly
             if ($provider !== 'auto') {
                 $candidates = array_filter($candidates, function ($k) use ($provider) {
                     if ($provider === 'vidapi') return str_starts_with($k, 'vidapi');
                     return $k === $provider;
                 }, ARRAY_FILTER_USE_KEY);
+                // If provider-specific filter leaves no candidates, fall back to all
+                if (empty($candidates)) {
+                    $candidates = $allCandidates;
+                }
             }
 
             // Try candidates by order until one is alive
@@ -84,6 +122,9 @@ class ProxyController extends Controller
                 '2embed'   => 'https://www.2embed.cc/',
                 'vidapi'   => 'https://vidapi.xyz/',
                 'vidapi_m' => 'https://vidapi.xyz/',
+                '123embed' => 'https://play.123embed.net/',
+                'vidplus'  => 'https://player.vidplus.to/',
+                'autoembed'=> 'https://player.autoembed.cc/',
             ];
             $chosen = null;
             foreach ($candidates as $key => $u) {
@@ -168,12 +209,18 @@ HTML;
         try {
             // Select an appropriate Referer based on the target host (supported providers)
             $refererMap = [
-                'embed.su'       => 'https://embed.su/',
-                '2embed.cc'      => 'https://www.2embed.cc/',
-                'www.2embed.cc'  => 'https://www.2embed.cc/',
-                'vidapi.xyz'     => 'https://vidapi.xyz/',
-                'www.vidapi.xyz' => 'https://vidapi.xyz/',
-                '2anime.xyz'     => 'https://2anime.xyz/',
+                'embed.su'             => 'https://embed.su/',
+                '2embed.cc'            => 'https://www.2embed.cc/',
+                'www.2embed.cc'        => 'https://www.2embed.cc/',
+                'vidapi.xyz'           => 'https://vidapi.xyz/',
+                'www.vidapi.xyz'       => 'https://vidapi.xyz/',
+                '2anime.xyz'           => 'https://2anime.xyz/',
+                'play.123embed.net'    => 'https://play.123embed.net/',
+                '123embed.net'         => 'https://play.123embed.net/',
+                'player.vidplus.to'    => 'https://player.vidplus.to/',
+                'www.player.vidplus.to'=> 'https://player.vidplus.to/',
+                'player.autoembed.cc'  => 'https://player.autoembed.cc/',
+                'www.autoembed.cc'     => 'https://player.autoembed.cc/',
             ];
             $parsed = parse_url($url);
             $host = $parsed['host'] ?? '';

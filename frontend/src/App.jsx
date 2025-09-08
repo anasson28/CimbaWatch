@@ -7,6 +7,7 @@ import MovieDetailPage from './pages/MovieDetailPage';
 import SerieDetailPage from './pages/SerieDetailPage';
 import TrendingMovieSerie from './pages/TrendingMovieSerie';
 import SearchResultsPage from './pages/SearchResultsPage';
+import FeaturedManager from './pages/FeaturedManager';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useFetch } from './hooks/useFetch';
 import { usePlayer } from './hooks/usePlayer';
@@ -33,7 +34,7 @@ export default function App() {
   // Route-based navigation; no manual page switching
 
   const { featured, items, loading } = useFetch({ activeTab, query });
-  const { open, videoId, title, kind, playItem, close } = usePlayer();
+  const { open, videoId, title, kind, poster, backdrop, playItem, close } = usePlayer();
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/series" element={<SeriesPage onPlay={playItem} />} />
           <Route path="/trending" element={<TrendingMovieSerie onPlay={playItem} />} />
           <Route path="/search" element={<SearchResultsPage onPlay={playItem} />} />
+          <Route path="/admin/featured" element={<FeaturedManager />} />
           <Route path="/movie/:slug" element={<MovieDetailPage onPlay={playItem} />} />
           <Route path="/series/:slug" element={<SerieDetailPage onPlay={playItem} />} />
         </Routes>
@@ -69,6 +71,8 @@ export default function App() {
         videoId={videoId}
         title={title}
         type={kind === 'series' ? 'tv' : 'movie'}
+        poster={poster}
+        backdrop={backdrop}
       />
     </div>
   );

@@ -10,17 +10,18 @@ export function slugifyTitle(title) {
     .replace(/^-+|-+$/g, '');
 }
 
-export function buildSlug(title, id) {
+// Build SEO-friendly slug: title-year (if year available)
+export function buildSlug(title, year) {
   const s = slugifyTitle(title);
-  if (id != null && id !== '') return `${s}-${id}`;
-  return s;
+  const y = year && String(year).match(/^\d{4}$/) ? String(year) : '';
+  return y ? `${s}-${y}` : s;
 }
 
+// Back-compat: extract trailing numeric ID if present (legacy URLs)
 export function extractIdFromSlug(param) {
   if (!param) return null;
-  const m = String(param).match(/-(\d+)$/);
+  const m = String(param).match(/-(\d{5,})$/); // assume IDs are >=5 digits typically
   if (m) return Number(m[1]);
-  // If the entire param is numeric, treat it as an ID
   if (/^\d+$/.test(String(param))) return Number(param);
   return null;
 }
@@ -28,7 +29,22 @@ export function extractIdFromSlug(param) {
 export function slugToQuery(param) {
   if (!param) return '';
   return String(param)
-    .replace(/-(\d+)$/, '')
+    // strip trailing -YYYY or -<legacy-id>
+    .replace(/-(\d{4}|\d{5,})$/, '')
     .replace(/[-_]+/g, ' ')
     .trim();
+}
+
+// Parse slug into { titleQuery, year }
+export function parseSlug(param) {
+  const raw = String(param || '').trim();
+  let year = null;
+  let base = raw;
+  const ym = raw.match(/-(\d{4})$/);
+  if (ym) {
+    year = Number(ym[1]);
+    base = raw.slice(0, -ym[0].length);
+  }
+  const titleQuery = base.replace(/[-_]+/g, ' ').trim();
+  return { titleQuery, year };
 }

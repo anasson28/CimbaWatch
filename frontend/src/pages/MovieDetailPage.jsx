@@ -5,23 +5,24 @@ import { fetchMovie } from '../api';
 import { useCollection } from '../hooks/useCollection';
 import MovieGrid from '../components/movies/MovieGrid';
 import Video from '../components/player/Video';
-import { extractIdFromSlug, slugToQuery } from '../utils/slug';
+import { extractIdFromSlug, slugToQuery, parseSlug } from '../utils/slug';
 import { http } from '../api/http';
 
 
 export default function MovieDetailPage({ onPlay }) {
   const { slug } = useParams();
   const numericId = extractIdFromSlug(slug);
+  const { titleQuery, year: slugYear } = parseSlug(slug);
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // Provider switch for iframe embed
-  const [provider, setProvider] = useState('vidapi'); // 'vidapi' default
+  const [provider, setProvider] = useState('vidplus'); // default to Vidplus for Server 1
 
   const serverOptions = [
-    { key: 'vidapi', label: 'Server 1', hint: 'vidapi' },
-    { key: '2embed', label: 'Server 2', hint: '2embed' },
-    { key: 'embed_su', label: 'Server 3', hint: 'embed.su' },
+    { key: 'vidplus', label: 'Server 1', hint: 'vidplus' },
+    { key: 'autoembed', label: 'Server 2', hint: 'autoembed' },
+    { key: '123embed', label: 'Server 3', hint: '123embed' },
   ];
 
   // Fetch movie details by slug (extract id), fallback to search by title words
@@ -38,12 +39,13 @@ export default function MovieDetailPage({ onPlay }) {
           setMovie(normalized);
           return;
         }
-        // Fallback: search by slug query and pick the best match
-        const q = slugToQuery(slug);
+        // Fallback: search by title words (from slug) and prefer year match if provided
+        const q = titleQuery || slugToQuery(slug);
         const { data } = await http.get('/api/movies', { params: { search: q, page: 1 } });
-        const first = data?.results?.[0];
-        if (first?.id) {
-          const full = await fetchMovie(first.id);
+        const list = data?.results ?? [];
+        const pick = (slugYear && list.find((it) => String(it.year || '') === String(slugYear))) || list[0];
+        if (pick?.id) {
+          const full = await fetchMovie(pick.id);
           if (!mounted) return;
           const normalized = full?.type ? full : { ...full, type: 'movie' };
           setMovie(normalized);
@@ -140,7 +142,13 @@ export default function MovieDetailPage({ onPlay }) {
         <h2 className="text-xl font-semibold mb-4">Streaming</h2>
         <div className="relative w-full overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-gradient-to-br from-zinc-900 to-black p-[2px] aspect-video">
           <div className="relative w-full h-full rounded-[10px] overflow-hidden bg-black">
-            <Video videoId={movie.id} type="movie" provider={provider} />
+            <Video
+              videoId={movie.id}
+              type="movie"
+              provider={provider}
+              coverImage={movie.backdrop || movie.poster}
+              title={movie.title}
+            />
           </div>
           <div className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-md bg-white/10 text-white/80 tracking-wide">
             {provider === 'auto' ? 'Auto' : serverOptions.find(s => s.key === provider)?.label}

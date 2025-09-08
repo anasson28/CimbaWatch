@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MovieGrid } from '../components';
 import { useRecommended } from '../hooks/useRecommended';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 
 export default function TrendingMovieSerie({ onPlay }) {
   const [page, setPage] = useState(1);
@@ -9,6 +10,12 @@ export default function TrendingMovieSerie({ onPlay }) {
 
   // Mixed trending items (movies + series), no filters
   const { items, loading } = useRecommended({ sort: 'trending', page });
+
+  // Aggregate results for infinite scroll
+  const [list, setList] = useState([]);
+  useEffect(() => {
+    setList((prev) => (page === 1 ? items : [...prev, ...items]));
+  }, [items, page]);
 
   // Detect last page (no items returned)
   useEffect(() => {
@@ -32,6 +39,14 @@ export default function TrendingMovieSerie({ onPlay }) {
     return [page - 2, page - 1, page, page + 1, page + 2];
   }, [page, hasMore, maxPage]);
 
+  // Infinite scroll sentinel
+  const sentinelRef = useInfiniteScroll({
+    loading,
+    hasMore,
+    onLoadMore: () => setPage((p) => p + 1),
+    rootMargin: '600px',
+  });
+
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16">
       <header className="pt-6 mb-6">
@@ -43,7 +58,10 @@ export default function TrendingMovieSerie({ onPlay }) {
         </div>
       </header>
 
-      <MovieGrid items={items} loading={loading} onPlay={onPlay} />
+      <MovieGrid items={list} loading={loading && page === 1} onPlay={onPlay} />
+
+      {/* Infinite scroll sentinel */}
+      <div ref={sentinelRef} className="h-10" />
 
       {/* Pagination */}
       <nav className="mt-8 flex items-center justify-center gap-2" aria-label="Pagination">

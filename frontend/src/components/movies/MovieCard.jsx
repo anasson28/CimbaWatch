@@ -5,10 +5,20 @@ import { buildSlug } from '../../utils/slug';
 
 export default function MovieCard({ item, onPlay }) {
   const navigate = useNavigate();
+  const yearNum = Number(item?.year || 0);
+  const ratingNum = Number(item?.rating || 0);
+  const nowYear = new Date().getFullYear();
+  const badges = [];
+  if (yearNum && yearNum >= nowYear - 1) badges.push({ label: 'New', color: 'bg-emerald-500' });
+  if (ratingNum >= 8.5) badges.push({ label: 'Top Rated', color: 'bg-indigo-500' });
+  // Always show HD as a quality hint
+  badges.push({ label: 'HD', color: 'bg-zinc-900/80' });
+  // Mark Exclusive for very high rated and recent titles
+  if (ratingNum >= 9 && yearNum >= nowYear - 1) badges.push({ label: 'Exclusive', color: 'bg-fuchsia-600' });
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      const slug = buildSlug(item?.title, item?.id);
+      const slug = buildSlug(item?.title, item?.year);
       if (item?.type === 'movie') {
         navigate(`/movie/${slug}`);
       } else if (item?.type === 'series') {
@@ -24,7 +34,7 @@ export default function MovieCard({ item, onPlay }) {
       role="button"
       tabIndex={0}
       onClick={() => {
-        const slug = buildSlug(item?.title, item?.id);
+        const slug = buildSlug(item?.title, item?.year);
         if (item?.type === 'movie') navigate(`/movie/${slug}`);
         else if (item?.type === 'series') navigate(`/series/${slug}`);
         else onPlay?.();
@@ -53,6 +63,17 @@ export default function MovieCard({ item, onPlay }) {
             {item.type}
           </span>
         )}
+        {/* Creative badges */}
+        <div className="absolute right-2 top-2 flex flex-col items-end gap-1">
+          {badges.map((b, i) => (
+            <span
+              key={`${b.label}-${i}`}
+              className={`rounded-md ${b.color} px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white shadow/50 shadow-black/30`}
+            >
+              {b.label}
+            </span>
+          ))}
+        </div>
       </div>
       <div className="p-3">
         <div className="truncate font-medium" title={item.title}>{item.title}</div>

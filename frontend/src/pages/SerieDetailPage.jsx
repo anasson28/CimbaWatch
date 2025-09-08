@@ -5,25 +5,26 @@ import { fetchSeries } from '../api';
 import { useCollection } from '../hooks/useCollection';
 import MovieGrid from '../components/movies/MovieGrid';
 import Video from '../components/player/Video';
-import { extractIdFromSlug, slugToQuery } from '../utils/slug';
+import { extractIdFromSlug, slugToQuery, parseSlug } from '../utils/slug';
 import { http } from '../api/http';
 // Using backend PHP player via iframe
 
 export default function SerieDetailPage({ onPlay }) {
   const { slug } = useParams();
   const numericId = extractIdFromSlug(slug);
+  const { titleQuery, year: slugYear } = parseSlug(slug);
   const [series, setSeries] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [season, setSeason] = useState(null);
   const [episode, setEpisode] = useState(1);
   // Provider switch for iframe embed
-  const [provider, setProvider] = useState('vidapi'); // default to vidapi
+  const [provider, setProvider] = useState('vidplus'); // default to Vidplus for Server 1
 
   const serverOptions = [
-    { key: 'vidapi', label: 'Server 1', hint: 'vidapi' },
-    { key: '2embed', label: 'Server 2', hint: '2embed' },
-    { key: 'embed_su', label: 'Server 3', hint: 'embed.su' },
+    { key: 'vidplus', label: 'Server 1', hint: 'vidplus' },
+    { key: 'autoembed', label: 'Server 2', hint: 'autoembed' },
+    { key: '123embed', label: 'Server 3', hint: '123embed' },
   ];
 
   // Fetch series details by slug (extract id), fallback to search by title words
@@ -37,11 +38,12 @@ export default function SerieDetailPage({ onPlay }) {
         if (numericId) {
           data = await fetchSeries(numericId);
         } else {
-          const q = slugToQuery(slug);
+          const q = titleQuery || slugToQuery(slug);
           const { data: res } = await http.get('/api/series', { params: { search: q, page: 1 } });
-          const first = res?.results?.[0];
-          if (first?.id) {
-            data = await fetchSeries(first.id);
+          const list = res?.results ?? [];
+          const pick = (slugYear && list.find((it) => String(it.year || '') === String(slugYear))) || list[0];
+          if (pick?.id) {
+            data = await fetchSeries(pick.id);
           }
         }
         if (!mounted) return;
@@ -207,7 +209,15 @@ export default function SerieDetailPage({ onPlay }) {
         <div className="relative w-full overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-gradient-to-br from-zinc-900 to-black p-[2px] aspect-video">
           <div className="relative w-full h-full rounded-[10px] overflow-hidden bg-black">
             {season != null && (
-              <Video videoId={series.id} type="tv" season={season} episode={episode} provider={provider} />
+              <Video
+                videoId={series.id}
+                type="tv"
+                season={season}
+                episode={episode}
+                provider={provider}
+                coverImage={series.backdrop || series.poster}
+                title={series.title}
+              />
             )}
           </div>
           <div className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-md bg-white/10 text-white/80 tracking-wide">

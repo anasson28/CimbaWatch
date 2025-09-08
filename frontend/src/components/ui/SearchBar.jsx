@@ -115,7 +115,7 @@ export default function SearchBar({ value, onChange, onSubmit, scope = 'all' }) 
 
   const goToResult = (item) => {
     if (!item) return;
-    const slug = buildSlug(item.title, item.id);
+    const slug = buildSlug(item.title, item.year);
     if (item.type === 'series') navigate(`/series/${slug}`);
     else navigate(`/movie/${slug}`);
     setOpen(false);

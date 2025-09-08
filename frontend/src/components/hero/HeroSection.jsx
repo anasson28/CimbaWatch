@@ -1,13 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Play, ChevronRight, Star, Download } from 'lucide-react';
+import { Play, ChevronRight, Star } from 'lucide-react';
 import Button from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { buildSlug } from '../../utils/slug';
 
 export default function HeroSection({ featured, onPlay, image, disableBackdrop = false }) {
   const navigate = useNavigate();
-  const targetPath = featured ? (featured.type === 'series' ? `/series/${buildSlug(featured.title, featured.id)}` : `/movie/${buildSlug(featured.title, featured.id)}`) : null;
+  const targetPath = featured ? (featured.type === 'series' ? `/series/${buildSlug(featured.title, featured.year)}` : `/movie/${buildSlug(featured.title, featured.year)}`) : null;
   return (
     <div className="relative overflow-hidden rounded-3xl">
       {/* Backdrop */}
@@ -62,12 +62,6 @@ export default function HeroSection({ featured, onPlay, image, disableBackdrop =
               className="gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
             >
               <Play className="h-4 w-4" /> Play
-            </Button>
-            <Button
-              onClick={() => targetPath && navigate(targetPath)}
-              className="gap-2 rounded-2xl border border-white/20 bg-white/10 text-white backdrop-blur hover:bg-white/20"
-            >
-              <Download className="h-4 w-4" /> Download
             </Button>
             <button
               type="button"
